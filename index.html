@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strong Password Generator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Dark background */
+        }
+        /* Custom styling for the range slider thumb */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e; /* Green color */
+            cursor: pointer;
+            margin-top: -6px; /* Adjust to center vertically */
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Application Container -->
+    <div class="w-full max-w-lg bg-gray-800 p-8 md:p-10 rounded-xl shadow-2xl transition-all duration-300">
+        <h1 class="text-3xl font-bold text-white mb-6 text-center">Secure Password Generator</h1>
+        <p class="text-gray-400 mb-8 text-center">Generate strong, random passwords for maximum security.</p>
+
+        <!-- Display Area for Generated Password -->
+        <div id="password-display-container" class="mb-8 p-4 bg-gray-900 rounded-lg flex justify-between items-center transition-all duration-300">
+            <span id="password-output" class="text-2xl font-mono text-green-400 truncate pr-4">P4$$wOrd!</span>
+            
+            <button id="copy-button" class="flex-shrink-0 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50" title="Copy to clipboard">
+                <svg id="copy-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v2"></path></svg>
+                <svg id="copied-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </button>
+        </div>
+        
+        <!-- User Input Form -->
+        <form id="generator-form" class="space-y-6">
+            
+            
+            <!-- Length Control -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label for="password-length" class="text-gray-300 font-semibold">Password Length:</label>
+                    <span id="length-value" class="text-xl font-bold text-green-400">12</span>
+                </div>
+                <input type="range" id="password-length" min="6" max="64" value="12" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg">
+            </div>
+
+            <hr class="border-gray-700">
+
+            <!-- Complexity Options -->
+            <div class="space-y-3">
+                <h3 class="text-lg font-semibold text-gray-300 mb-3">Include:</h3>
+
+                <!-- Uppercase -->
+                <div class="flex items-center justify-between">
+                    <label for="include-uppercase" class="text-gray-400 select-none">Uppercase Letters (A-Z)</label>
+                    <input type="checkbox" id="include-uppercase" checked class="h-5 w-5 text-green-600 bg-gray-700 border-gray-600 rounded focus:ring-green-500">
+                </div>
+
+                <!-- Numbers -->
+                <div class="flex items-center justify-between">
+                    <label for="include-numbers" class="text-gray-400 select-none">Numbers (0-9)</label>
+                    <input type="checkbox" id="include-numbers" checked class="h-5 w-5 text-green-600 bg-gray-700 border-gray-600 rounded focus:ring-green-500">
+                </div>
+
+                <!-- Symbols -->
+                <div class="flex items-center justify-between">
+                    <label for="include-symbols" class="text-gray-400 select-none">Symbols (!@#$%, etc.)</label>
+                    <input type="checkbox" id="include-symbols" checked class="h-5 w-5 text-green-600 bg-gray-700 border-gray-600 rounded focus:ring-green-500">
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <button type="submit" id="generate-btn" class="w-full bg-green-500 hover:bg-green-600 text-gray-900 font-extrabold py-3 rounded-lg text-lg transition duration-200 ease-in-out shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-75">
+                Generate Password
+            </button>
+
+            <!-- Status Message -->
+            <div id="status-message" class="text-center text-red-400 mt-4 h-6"></div>
+
+        </form>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- API Configuration ---
+        // NOTE: This URL must point to where you run the password_generator_server.py Flask app.
+        const BACKEND_URL = "http://localhost:5000/generate-password";
+
+        // --- DOM Elements ---
+        const form = document.getElementById('generator-form');
+        const lengthInput = document.getElementById('password-length');
+        const lengthValueSpan = document.getElementById('length-value');
+        const passwordOutput = document.getElementById('password-output');
+        const copyButton = document.getElementById('copy-button');
+        const statusMessage = document.getElementById('status-message');
+        const copyIcon = document.getElementById('copy-icon');
+        const copiedIcon = document.getElementById('copied-icon');
+        
+        // --- Event Listeners ---
+        
+        // Update length display when slider moves
+        lengthInput.addEventListener('input', () => {
+            lengthValueSpan.textContent = lengthInput.value;
+        });
+
+        // Initialize the password output display
+        document.addEventListener('DOMContentLoaded', () => {
+            // Display a default password length on load
+            lengthValueSpan.textContent = lengthInput.value;
+            // Generate an initial dummy password
+            passwordOutput.textContent = 'Click Generate';
+        });
+
+        // Handle form submission to generate password
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            statusMessage.textContent = ''; // Clear previous messages
+            passwordOutput.textContent = 'Generating...';
+            
+            // 1. Collect user input
+            const length = parseInt(lengthInput.value, 10);
+            const includeUppercase = document.getElementById('include-uppercase').checked;
+            const includeNumbers = document.getElementById('include-numbers').checked;
+            const includeSymbols = document.getElementById('include-symbols').checked;
+
+            // Simple validation to ensure at least one character type is selected
+            if (!includeUppercase && !includeNumbers && !includeSymbols) {
+                 statusMessage.textContent = 'Please select at least one character type.';
+                 passwordOutput.textContent = 'P4$$wOrd!';
+                 return;
+            }
+
+            // 2. Prepare payload for the backend API
+            const payload = {
+                length: length,
+                uppercase: includeUppercase,
+                numbers: include_numbers,
+                symbols: includeSymbols
+            };
+
+            // 3. Call the Python Backend API (with Exponential Backoff for retries)
+            const MAX_RETRIES = 3;
+            let responseData = null;
+
+            for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                try {
+                    const response = await fetch(BACKEND_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    // Check if the request was successful (200 OK)
+                    if (response.ok) {
+                        responseData = await response.json();
+                        break; // Success, break the retry loop
+                    } else {
+                        // Handle server-side errors (e.g., length validation error from Flask)
+                        const errorData = await response.json();
+                        statusMessage.textContent = errorData.error || `Server Error: ${response.status}`;
+                        passwordOutput.textContent = 'P4$$wOrd!';
+                        return; // Stop if the response is an error
+                    }
+
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    if (attempt < MAX_RETRIES - 1) {
+                        const delay = Math.pow(2, attempt) * 1000; // Exponential delay (1s, 2s, 4s)
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        // Do not log the retry itself as an error in the console
+                    } else {
+                        statusMessage.textContent = 'Failed to connect to the generator server (Is Python backend running?).';
+                        passwordOutput.textContent = 'P4$$wOrd!';
+                        return;
+                    }
+                }
+            }
+
+            // 4. Display the result
+            if (responseData && responseData.password) {
+                passwordOutput.textContent = responseData.password;
+            } else if (responseData) {
+                // Should not happen if API is structured correctly, but good for robustness
+                statusMessage.textContent = 'Generation successful but no password received.';
+            }
+        });
+
+
+        // Handle copy to clipboard functionality
+        copyButton.addEventListener('click', () => {
+            // Get the password text
+            const textToCopy = passwordOutput.textContent;
+            
+            // Use document.execCommand('copy') for better compatibility in iframe environments
+            try {
+                // Create a temporary textarea element to hold the text
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = textToCopy;
+                tempTextArea.style.position = 'fixed'; // Prevents scrolling to the element
+                tempTextArea.style.left = '-9999px'; // Move off-screen
+                
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempTextArea);
+
+                // Visual confirmation
+                copyIcon.classList.add('hidden');
+                copiedIcon.classList.remove('hidden');
+                statusMessage.textContent = 'Password copied to clipboard!';
+                statusMessage.classList.remove('text-red-400');
+                statusMessage.classList.add('text-green-400');
+
+                // Revert icon and message after a short delay
+                setTimeout(() => {
+                    copyIcon.classList.remove('hidden');
+                    copiedIcon.classList.add('hidden');
+                    statusMessage.textContent = '';
+                    statusMessage.classList.remove('text-green-400');
+                    statusMessage.classList.add('text-red-400');
+                }, 2000);
+
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+                statusMessage.textContent = 'Failed to copy password.';
+            }
+        });
+
+    </script>
+</body>
+</html>
